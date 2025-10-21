@@ -3,6 +3,7 @@
 A simple, fast, multi-threaded subdomain scanner written in Python.
 
 **Creator:** https://github.com/Suryao07/
+![Uploading banner.png…]()
 
 ![Banner of Domain Scanner Tool](https://user-images.githubusercontent.com/YOUR_USER_ID/YOUR_IMAGE_ID)
 *(**Note:** You'll need to run the tool, take a screenshot of the banner, and upload it here)*
