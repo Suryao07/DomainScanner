@@ -5,7 +5,9 @@ A fast, multi-threaded subdomain scanner written in Python. Designed for ethical
 **Creator:** https://github.com/Suryao07/
 
 ---
-<img width="995" height="403" alt="banner" src="https://github.com/user-attachments/assets/9e0d75ab-cdbe-4bc3-b9a4-363361dc9ccf" />
+<img width="995" height="403" alt="Screenshot From 2025-10-22 00-44-38" src="https://github.com/user-attachments/assets/1ff13bf4-6bcb-4a04-8a85-5fc9ba5e2b3a" />
+
+
 
 
 ## Features
