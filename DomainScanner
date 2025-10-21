@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Domain Scanner
+A multi-threaded subdomain scanner.
+Creator: https://github.com/Suryao07/
+"""
+
+import os
+import sys
+import shutil
+import requests
+import re
+import time
+import threading
+import concurrent.futures
+from urllib.parse import urlparse
+
+LETTER = {
+    "A": [" ___ ",
+          " / _ \\ ",
+          "/ /_\\ \\",
+          "|  _  |",
+          "| | | |",
+          "\\_| |_/" ],
+    "D": ["______ ",
+          "|  _  \\",
+          "| | | |",
+          "| | | |",
+          "| |/ / ",
+          "|___/  "],
+    "O": [" _____ ",
+          "/  _  \\",
+          "| | | |",
+          "| | | |",
+          "\\ \\_/ /",
+          " \\___/ "],
+    "M": ["__  __ ",
+          "|  \\/  |",
+          "| .  . |",
+          "| |\\/| |",
+          "| |  | |",
+          "|_|  |_|"],
+    "I": [" _____ ",
+          "|_   _|",
+          "  | |  ",
+          "  | |  ",
+          "  | |  ",
+          "  \\_/  "],
+    "N": [" _   _ ",
+          "| \\ | |",
+          "|  \\| |",
+          "| . ` |",
+          "| |\\  |",
+          "\\_| \\_/"],
+    "S": [" _____ ",
+          "/  ___|",
+          "\\ `--. ",
+          " `--. \\",
+          "/\\__/ /",
+          "\\____/ "],
+    "C": [" _____ ",
+          "/  __ \\",
+          "| /  \\/",
+          "| |    ",
+          "| \\__/\\",
+          " \\____/"],
+    "E": ["______ ",
+          "| ___ \\",
+          "| |_/ /",
+          "|  __/ ",
+          "| |    ",
+          "\\_|    "],
+    "R": ["______ ",
+          "| ___ \\",
+          "| |_/ /",
+          "|    / ",
+          "| |\\ \\ ",
+          "\\_| \\_|"],
+    " ": ["  ", "  ", "  ", "  ", "  ", "  "]
+}
+
+# --- Colors ---
+RED_BOLD = "\033[1;31m"
+GREEN_BOLD = "\033[1;32m"
+CYAN_BOLD = "\033[1;36m"
+YELLOW_BOLD = "\033[1;33m" 
+RESET = "\033[0m"
+
+# --- Regex ---
+DOMAIN_REGEX = re.compile(
+    r"^(?:[a-zA-Z0-9]"
+    r"(?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)"
+    r"+[a-zA-Z]{2,6}$"
+)
+IP_REGEX = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+
+# --- Globals ---
+CREATOR_INFO = "             Tool Created By: https://github.com/Suryao07/"
+MAX_THREADS = 100
+print_lock = threading.Lock() 
+progress_counter = 0 
+# --- NEW: Find the script's own directory ---
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_WORDLIST_DIR = os.path.join(SCRIPT_DIR, "wordlists")
+DEFAULT_WORDLIST_NAME = "pro.txt" # Set your preferred default
+
+def enable_windows_ansi():
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        kernel3s2 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_uint()
+        if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+            kernel32.SetConsoleMode(handle, mode.value | ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+    except Exception:
+        pass
+
+def render_banner(text):
+    text = text.upper()
+    rows = len(next(iter(LETTER.values())))
+    out_lines = []
+    for r in range(rows):
+        row_parts = []
+        for ch in text:
+            glyph = LETTER.get(ch, LETTER[" "])
+            row_parts.append(glyph[r])
+        out_lines.append("  ".join(row_parts))
+    return "\n".join(out_lines)
+
+def print_red_banner(text, center=True, padding=0):
+    banner = render_banner(text)
+    if center:
+        try:
+            term_width = shutil.get_terminal_size().columns
+        except Exception:
+            term_width = 80
+        centered_lines = []
+        for line in banner.splitlines():
+            padded = (" " * padding) + line
+            centered_lines.append(padded.center(term_width))
+        banner = "\n".join(centered_lines)
+    sys.stdout.write(RED_BOLD + banner + RESET + "\n")
+
+def scan_subdomain(url, total_scans):
+    """
+    Scans a single URL. Returns the URL if found, None if not.
+    Also handles thread-safe printing for progress.
+    """
+    global progress_counter
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'}
+        requests.get(f"http://{url}", timeout=5, headers=headers, allow_redirects=True)
+        
+        with print_lock:
+            sys.stdout.write(f"{GREEN_BOLD}[+] Found: {url}{RESET}\n")
+        
+        return url 
+        
+    except (requests.exceptions.ConnectionError, requests.exceptions.RequestException):
+        return None 
+        
+    finally:
+        with print_lock:
+            progress_counter += 1
+            if progress_counter % 100 == 0 or progress_counter == total_scans:
+                sys.stdout.write(f"{YELLOW_BOLD}[*] Progress: {progress_counter}/{total_scans} scans completed.{RESET}\n")
+
+def clean_and_validate_target(raw_target):
+    if not raw_target:
+        return None, "Input cannot be empty."
+    target = raw_target.strip()
+    if not target.startswith(('http://', 'https://')):
+        target = 'http://' + target
+    try:
+        parsed_url = urlparse(target)
+        domain = parsed_url.netloc
+        domain = domain.split(':', 1)[0]
+        if not domain:
+             return None, "Invalid format. Could not extract domain."
+        if IP_REGEX.match(domain):
+            return None, "This is an IP address. This tool only scans domains for subdomains."
+        if DOMAIN_REGEX.match(domain):
+            return domain, None
+        else:
+            return None, "Invalid domain format. Please enter like 'google.com' or 'tryhackme.com'"
+    except Exception as e:
+        return None, f"An error occurred during parsing: {e}"
+
+def run_scan(domain, wordlist_path, total_scans):
+    """
+    Manages the thread pool and collects results.
+    """
+    global progress_counter
+    progress_counter = 0 
+    found_subdomains = []
+    start_time = time.time() 
+
+    sys.stdout.write(CYAN_BOLD + f"\n[*] Starting scan on: {domain} with {MAX_THREADS} threads...\n" + RESET)
+    sys.stdout.write(CYAN_BOLD + f"[*] Using wordlist: {wordlist_path} ({total_scans} words)\n" + RESET)
+    sys.stdout.write(CYAN_BOLD + ("-" * 30) + "\n" + RESET)
+
+    # We need to re-open the wordlist here for the thread pool
+    try:
+        with open(wordlist_path, 'r') as file:
+            wordlist = [line.strip() for line in file if line.strip()]
+    except Exception as e:
+        sys.stdout.write(RED_BOLD + f"[-] Error reading wordlist during scan: {e}\n" + RESET)
+        return
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
+        futures = {executor.submit(scan_subdomain, f"{sub}.{domain}", total_scans): sub for sub in wordlist}
+        
+        try:
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                if result:
+                    found_subdomains.append(result)
+                    
+        except KeyboardInterrupt:
+            sys.stdout.write(f"\n{RED_BOLD}[!] Scan interrupted by user. Stopping threads...{RESET}\n")
+            executor.shutdown(wait=False, cancel_futures=True) 
+            
+    end_time = time.time()
+    
+    sys.stdout.write(CYAN_BOLD + ("-" * 30) + "\n" + RESET)
+    sys.stdout.write(f"{CYAN_BOLD}[*] Scan complete in {end_time - start_time:.2f} seconds.{RESET}\n")
+    if found_subdomains:
+        sys.stdout.write(CYAN_BOLD + f"\n[+] Found {len(found_subdomains)} subdomains:\n" + RESET)
+        for sub in found_subdomains:
+            sys.stdout.write(CYAN_BOLD + f"  - {sub}\n" + RESET)
+    else:
+        sys.stdout.write(CYAN_BOLD + "[-] No subdomains found.\n" + RESET)
+    return
+
+def main_tool_loop():
+    print_red_banner("DOMAIN SCANNER", center=True, padding=0)
+    enable_windows_ansi()
+    info_text = "\nThis tool is used to scan domains for their subdomains.\n"
+    sys.stdout.write(CYAN_BOLD + info_text + RESET)
+    sys.stdout.write(CYAN_BOLD + CREATOR_INFO + RESET + "\n")
+    warning = (
+        "\nWarning: This tool is for educational purposes only.\n"
+        "Unauthorized scanning of domains may be illegal and unethical.\n"
+        "Always obtain permission before scanning any domain.\n"
+        f"\n{YELLOW_BOLD}Type 'exit' or press CTRL+C to quit.{RESET}\n"
+    )
+    sys.stdout.write(RED_BOLD + warning + RESET)
+
+    while True:
+        sys.stdout.write("\n" + ("-" * 40) + "\n")
+        try:
+            raw_domain_input = input(f"{YELLOW_BOLD}[+] Enter domain (e.g., tryhackme.com): {RESET}")
+            if raw_domain_input.lower() == 'exit':
+                break
+            domain, error_msg = clean_and_validate_target(raw_domain_input)
+            if error_msg:
+                sys.stdout.write(f"{RED_BOLD}[-] Error: {error_msg}{RESET}\n")
+                continue
+
+            # --- UPDATED WORDLIST LOGIC ---
+            wordlist_input = input(f"{YELLOW_BOLD}[+] Enter path or default wordlist name (default: {DEFAULT_WORDLIST_NAME}): {RESET}") or DEFAULT_WORDLIST_NAME
+            if wordlist_input.lower() == 'exit':
+                break
+
+            wordlist_path = None
+            
+            # Check 1: Is it a full, valid path?
+            if os.path.isfile(wordlist_input):
+                wordlist_path = wordlist_input
+            else:
+                # Check 2: Is it a default list?
+                potential_path = os.path.join(DEFAULT_WORDLIST_DIR, wordlist_input)
+                if os.path.isfile(potential_path):
+                    wordlist_path = potential_path
+
+            # Check 3: If neither, it's not found.
+            if not wordlist_path:
+                sys.stdout.write(RED_BOLD + f"[-] Error: Wordlist not found at '{wordlist_input}' or '{potential_path}'\n" + RESET)
+                continue
+            
+            # We only need to count the lines, not load the whole file into memory here
+            try:
+                with open(wordlist_path, 'r') as f:
+                    total_scans = sum(1 for line in f if line.strip())
+                if total_scans == 0:
+                     sys.stdout.write(RED_BOLD + f"[-] Error: Wordlist '{wordlist_path}' is empty.\n" + RESET)
+                     continue
+            except Exception as e:
+                sys.stdout.write(RED_BOLD + f"[-] Error reading wordlist: {e}\n" + RESET)
+                continue
+            
+            run_scan(domain, wordlist_path, total_scans) 
+                
+        except EOFError:
+             break
+        except KeyboardInterrupt:
+             break
+
+if __name__ == "__main__":
+    try:
+        main_tool_loop()
+        sys.stdout.write(f"\n{CYAN_BOLD}Exiting scanner. Goodbye!{RESET}\n")
+    except KeyboardInterrupt:
+        sys.stdout.write(f"\n{RED_BOLD}[!] Exiting scanner. Goodbye!{RESET}\n")
+        sys.exit(0)
+    except Exception as e:
+        sys.stdout.write(f"\n{RED_BOLD}[!] An unexpected error occurred: {e}{RESET}\n")
