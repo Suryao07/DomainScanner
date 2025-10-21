@@ -1,21 +1,20 @@
 # Domain Scanner
 
-A simple, fast, multi-threaded subdomain scanner written in Python.
+A fast, multi-threaded subdomain scanner written in Python. Designed for ethical hacking reconnaissance, it features smart input parsing and flexible wordlist options.
 
 **Creator:** https://github.com/Suryao07/
-![Uploading banner.png…]()
-
-![Banner of Domain Scanner Tool](https://user-images.githubusercontent.com/YOUR_USER_ID/YOUR_IMAGE_ID)
-*(**Note:** You'll need to run the tool, take a screenshot of the banner, and upload it here)*
 
 ---
+<img width="995" height="403" alt="banner" src="https://github.com/user-attachments/assets/9e0d75ab-cdbe-4bc3-b9a4-363361dc9ccf" />
+
 
 ## Features
 
 * **Multi-threaded:** Uses 100 threads by default for fast scanning.
 * **Smart Input:** Accepts domains (`google.com`) or full URLs (`https://google.com/path`).
-* **Progress Bar:** Shows scan progress every 100 attempts.
-* **Flexible Wordlists:** Use your own custom path or bundled default wordlists.
+* **Progress Bar:** Shows scan progress every 100 attempts.![Uploading banner.png…]()
+
+* **Flexible Wordlists:** Use your own custom path or the bundled default wordlists.
 
 ---
 
@@ -27,8 +26,8 @@ Follow these steps to get the tool running.
 
 First, download the tool and move into the new directory.
 ```bash
-git clone [https://github.com/Suryao07/Your-Repo-Name.git](https://github.com/Suryao07/Your-Repo-Name.git)
-cd Your-Repo-Name
+git clone [https://github.com/Suryao07/Domain-Scanner.git](https://github.com/Suryao07/Domain-Scanner.git)
+cd Domain-Scanner
 ````
 
 ### 2\. Install Dependencies
@@ -53,7 +52,7 @@ The tool's main wordlist (`pro.txt`) is too large for GitHub (26MB). You must do
 
   * **Download Link:** `https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/dns-Jhaddix.txt`
 
-The command below will download the file, **automatically rename it to `pro.txt`**, and **paste it directly into your `wordlists` folder** where the tool expects it.
+This command will download the file, **rename it to `pro.txt`**, and **paste it directly into your `wordlists` folder** where the tool expects it.
 
 ```bash
 wget [https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/dns-Jhaddix.txt](https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/dns-Jhaddix.txt) -O wordlists/pro.txt
