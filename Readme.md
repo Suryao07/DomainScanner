@@ -4,9 +4,9 @@ A fast, multi-threaded reconnaissance tool written in Python. It scans targets u
 
 **Creator:** [https://github.com/Suryao07/](https://github.com/Suryao07/)
 
+<img width="995" height="403" alt="Screenshot From 2025-10-22 00-44-38" src="https://github.com/user-attachments/assets/c8c6ff86-0878-493f-8dd4-2a11b3bb162b" />
 
 
-<img width="995" height="403" alt="banner" src="[https://github.com/user-attachments/assets/9e0d75ab-cdbe-4bc3-b9a4-363361dc9ccf](https://github.com/user-attachments/assets/9e0d75ab-cdbe-4bc3-b9a4-363361dc9ccf)" /\>
 
 ## Features
 
