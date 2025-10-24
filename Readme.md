@@ -1,115 +1,122 @@
-# Domain Scanner
+Domain Scanner
 
-A fast, multi-threaded subdomain scanner written in Python. Designed for ethical hacking reconnaissance, it features smart input parsing and flexible wordlist options.
+A fast, multi-threaded reconnaissance tool written in Python. It scans targets using DNS (subdomain), VHost (IP-based subdomain), and Page (directory/file) enumeration.
 
-**Creator:** https://github.com/Suryao07/
+Creator: https://github.com/Suryao07/
 
----
-<img width="995" height="403" alt="Screenshot From 2025-10-22 00-44-38" src="https://github.com/user-attachments/assets/1ff13bf4-6bcb-4a04-8a85-5fc9ba5e2b3a" />
+<img width="995" height="403" alt="banner" src="https://github.com/user-attachments/assets/9e0d75ab-cdbe-4bc3-b9a4-363361dc9ccf" />
 
+Features
 
+    Multi-Mode Scanning:
 
+        (d)ns: Finds subdomains using public DNS records.
 
-## Features
+        (v)host: Finds subdomains hosted on a specific IP (VHost scanning).
 
-* **Multi-threaded:** Uses 100 threads by default for fast scanning.
-* **Smart Input:** Accepts domains (`google.com`) or full URLs (`https://google.com/path`).
-* **Progress Bar:** Shows scan progress every 100 attempts.![Uploading banner.png…]()
+        (p)age: Finds common directories and files (/admin, /login, robots.txt).
 
-* **Flexible Wordlists:** Use your own custom path or the bundled default wordlists.
+    Smart Input: Accepts domains (example.com) or IP addresses (10.10.10.10).
 
----
+    Smart Wordlists: Automatically suggests the correct default wordlist (pro.txt for subdomains, common_pages.txt for pages).
 
-## Installation
+    Recon Enabled:
+
+        Entering a domain shows its IP.
+
+        Entering an IP shows its reverse-DNS hostname.
+
+        Entering an IP allows for direct page scanning (useful for CTFs).
+
+    Fast & User-Friendly: Multi-threaded, color-coded output, and progress tracking.
+
+Installation
 
 Follow these steps to get the tool running.
 
-### 1. Clone the Repository
+1. Clone the Repository
 
 First, download the tool and move into the new directory.
-```bash
-git clone [https://github.com/Suryao07/Domain-Scanner.git](https://github.com/Suryao07/Domain-Scanner.git)
+Bash
+
+git clone https://github.com/Suryao07/Domain-Scanner.git
 cd Domain-Scanner
-````
 
-### 2\. Install Dependencies
+2. Install Dependencies
 
-The tool only requires the `requests` library.
+The tool only requires the requests library.
+Bash
 
-```bash
 pip3 install requests
-```
 
-### 3\. Make the Tool Executable
+3. Make the Tool Executable
 
 This is a critical step to make the script runnable.
+Bash
 
-```bash
 chmod +x DomainScanner
-```
 
-### 4\. Download the Main Wordlist (IMPORTANT)
+4. Setup Wordlists (IMPORTANT)
 
-The tool's main wordlist (`pro.txt`) is too large for GitHub (26MB). You must download it manually.
+The tool relies on two different wordlists in the wordlists/ directory. You must download them manually.
 
-  * **Download Link:** `https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/dns-Jhaddix.txt`
+    For Subdomains (pro.txt): This list is for DNS and VHost scanning. This command renames it to pro.txt and puts it in the right folder.
+    Bash
 
-This command will download the file, **rename it to `pro.txt`**, and **paste it directly into your `wordlists` folder** where the tool expects it.
+wget https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/dns-Jhaddix.txt -O wordlists/pro.txt
 
-```bash
-wget [https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/dns-Jhaddix.txt](https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/dns-Jhaddix.txt) -O wordlists/pro.txt
-```
+For Pages (common_pages.txt): This list is for Page scanning. This command downloads a popular page-scanning list and saves it as the script's default.
+Bash
 
------
+    wget https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/common.txt -O wordlists/common_pages.txt
 
-## Usage
+Usage
 
 After installation, you can run the tool directly from your terminal:
+Bash
 
-```bash
 ./DomainScanner
-```
 
-### Wordlists
+The tool's behavior changes based on whether you input a domain or an IP.
 
-This tool is designed to work with the `wordlists/` directory.
+Example 1: Entering a Domain
 
-  * **Default List (`pro.txt`):** After you download this list (see Installation step 4), you can use it by just pressing **Enter** at the wordlist prompt.
-  * **Other Bundled Lists:** The repository includes these smaller lists you can use by typing their name:
-      * `small.txt`
-      * `medium.txt`
-      * `large.txt`
-      * `pro-combined.txt`
+This gives you all three scan options.
 
-**Example (using the default `pro.txt`):**
+[+] Enter domain or IP (e.g., example.com): example.com
+[*] Domain example.com resolves to IP: 93.184.216.34
+[?] Scan: (d)ns, (v)host, or (p)age? (default: d): p
 
-```
-[+] Enter domain (e.g., tryhackme.com): tryhackme.com
-[+] Enter path or default wordlist name (default: pro.txt): 
-[*] Starting scan...
-```
+    Choosing (d) will scan DNS for subdomains (e.g., blog.example.com).
 
-**Example (using `small.txt`):**
+    Choosing (v) will scan the IP 93.184.216.34 for subdomains.
 
-```
-[+] Enter domain (e.g., tryhackme.com): tryhackme.com
-[+] Enter path or default wordlist name (default: pro.txt): small.txt
-[*] Starting scan...
-```
+    Choosing (p) will scan for pages (e.g., example.com/login).
 
-**Example (using a custom path):**
+Example 2: Entering an IP
 
-```
-[+] Enter domain (e.g., tryhackme.com): tryhackme.com
-[+] Enter path or default wordlist name (default: pro.txt): /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt
-[*] Starting scan...
-```
+This is useful for TryHackMe/CTFs. It offers a direct Page scan.
 
------
+[+] Enter domain or IP (e.g., example.com): 10.10.10.10
+[*] IP 10.10.10.10 resolves to hostname: thm.box.internal
+[?] Do you want to scan this IP for pages? (y/n): y
 
-## Legal Disclaimer
+    Choosing (y) will scan the IP for pages (e.g., http://10.10.10.10/admin.php).
 
-**Warning:** This tool is for educational purposes only. Unauthorized scanning of domains may be illegal and unethical. Always obtain permission before scanning any domain.
+Wordlist Prompts
 
-```
-```
+The tool automatically suggests the correct wordlist for your scan type.
+
+    For (d)ns or (v)host scans:
+
+    [+] Enter path or default wordlist name (default: pro.txt): 
+
+    For (p)age scans:
+
+    [+] Enter path or default wordlist name (default: common_pages.txt):
+
+You can just press Enter to use the default, or type a name like small.txt (if it's in the wordlists/ folder), or provide a full custom path.
+
+Legal Disclaimer
+
+Warning: This tool is for educational purposes only. Unauthorized scanning of domains may be illegal and unethical. Always obtain permission before scanning any domain.
