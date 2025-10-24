@@ -1,4 +1,4 @@
-Domain Scanner
+# Domain Scanner
 
 A fast, multi-threaded reconnaissance tool written in Python. It scans targets using **DNS** (subdomain), **VHost** (IP-based subdomain), and **Page** (directory/file) enumeration.
 
@@ -55,21 +55,31 @@ chmod +x DomainScanner
 
 ### 4\. Setup Wordlists (IMPORTANT)
 
-The tool relies on two different wordlists in the `wordlists/` directory. You must download them manually.
+The tool requires a `wordlists/` directory with two default lists.
+
+First, create the directory:
+
+```bash
+mkdir wordlists
+```
+
+Now, download the default lists:
 
   * **For Subdomains (`pro.txt`):**
-    This list is for DNS and VHost scanning. This command renames it to `pro.txt` and puts it in the right folder.
+    This list is for DNS and VHost scanning.
 
     ```bash
     wget https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/dns-Jhaddix.txt -O wordlists/pro.txt
     ```
 
   * **For Pages (`common_pages.txt`):**
-    This list is for Page scanning. This command downloads a popular page-scanning list and saves it as the script's default.
+    This list is for Page scanning. It's the modern replacement for older lists like `directory-list-2.3-medium.txt`.
 
     ```bash
-    wget https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/common.txt -O wordlists/common_pages.txt
+    wget https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/combined_directories.txt -O wordlists/common_pages.txt
     ```
+
+**Tip:** You can download other lists (like `common.txt` for a faster page scan) from the [SecLists Web-Content repository](https://github.com/danielmiessler/SecLists/tree/master/Discovery/Web-Content) and place them in the `wordlists/` folder.
 
 -----
 
@@ -129,27 +139,3 @@ You can just press **Enter** to use the default, or type a name like `small.txt`
 ## Legal Disclaimer
 
 **Warning:** This tool is for educational purposes only. Unauthorized scanning of domains may be illegal and unethical. Always obtain permission before scanning any domain.
-
------
-
-## Where to Find More Page/Directory Wordlists
-
-You asked where to get *every possible* wordlist. The most famous and comprehensive collection is **SecLists**. You can download any of the files from this repository and save them in your `wordlists/` folder to use them.
-
-The best directory for page scanning is:
-
-  * **SecLists - Web Content:** [**https://github.com/danielmiessler/SecLists/tree/master/Discovery/Web-Content**](https://github.com/danielmiessler/SecLists/tree/master/Discovery/Web-Content)
-
-**Popular Lists from SecLists:**
-
-  * `common.txt`: (The one I set as default) Great, fast list.
-  * `directory-list-2.3-medium.txt`: A very popular and much larger list. (This is the default for tools like `gobuster`).
-  * `raft-medium-directories.txt`: Another excellent, medium-sized list.
-  * `quickhits.txt`: A very small, fast list for a quick check.
-
-If you are on a penetration testing operating system like **Kali Linux** or **Parrot OS**, you already have many of these lists on your system. You can find them in:
-
-  * `/usr/share/wordlists/`
-  * `/usr/share/wordlists/dirb/`
-  * `/usr/share/wordlists/dirbuster/`
-  * `/usr/share/wordlists/wfuzz/`
