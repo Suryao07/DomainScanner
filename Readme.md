@@ -6,7 +6,7 @@ A fast, multi-threaded reconnaissance tool written in Python. It scans targets u
 
 -----
 
-\<img width="995" height="403" alt="banner" src="[https://github.com/user-attachments/assets/9e0d75ab-cdbe-4bc3-b9a4-363361dc9ccf](https://github.com/user-attachments/assets/9e0d75ab-cdbe-4bc3-b9a4-363361dc9ccf)" /\>
+<img width="995" height="403" alt="banner" src="[https://github.com/user-attachments/assets/9e0d75ab-cdbe-4bc3-b9a4-363361dc9ccf](https://github.com/user-attachments/assets/9e0d75ab-cdbe-4bc3-b9a4-363361dc9ccf)" /\>
 
 ## Features
 
