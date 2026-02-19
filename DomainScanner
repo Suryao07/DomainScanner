@@ -17,6 +17,9 @@ import threading
 import concurrent.futures
 import socket
 import ctypes
+import argparse
+import random
+import string
 from urllib.parse import urlparse
 
 LETTER = {
@@ -98,11 +101,12 @@ RESET = "\033[0m"
 # --- Globals ---
 CREATOR_INFO = "             Tool Created By: https://github.com/Suryao07/"
 MAX_THREADS = 100
+DEFAULT_TIMEOUT = 5
 print_lock = threading.Lock() 
 progress_counter = 0 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_WORDLIST_DIR = os.path.join(SCRIPT_DIR, "wordlists")
-DEFAULT_SUBDOMAIN_WORDLIST = "pro.txt" 
+DEFAULT_SUBDOMAIN_WORDLIST = "pro-combined.txt"
 DEFAULT_PAGE_WORDLIST = "common_pages.txt"
 
 def enable_windows_ansi():
@@ -145,16 +149,20 @@ def print_red_banner(text, center=True, padding=0):
     sys.stdout.write(RED_BOLD + banner + RESET + "\n")
 
 # --- MODIFIED: Progress bar uses \r ---
-def scan_dns(url, total_scans):
+def scan_dns(url, total_scans, session=None, timeout=DEFAULT_TIMEOUT, use_https=False, exclude_codes=None):
     """
-    Scans a single URL via DNS. Reports any status except 404.
+    Scans a single URL via DNS. Reports any status not in exclude_codes.
     """
+    if exclude_codes is None:
+        exclude_codes = {404}
     global progress_counter
+    scheme = "https" if use_https else "http"
+    req = session if session is not None else requests
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'}
-        response = requests.get(f"http://{url}", timeout=5, headers=headers, allow_redirects=False)
+        response = req.get(f"{scheme}://{url}", timeout=timeout, headers=headers, allow_redirects=False)
         
-        if response.status_code != 404:
+        if response.status_code not in exclude_codes:
             with print_lock:
                 # Print result on a new line, clearing progress bar
                 sys.stdout.write(f"\r{GREEN_BOLD}[+] Found (DNS): {url} {YELLOW_BOLD}(Status: {response.status_code}){RESET}\n")
@@ -169,26 +177,30 @@ def scan_dns(url, total_scans):
         with print_lock:
             progress_counter += 1
             if progress_counter % 100 == 0 or progress_counter == total_scans:
-                # Use \r to overwrite the current line and flush
+                pct = (progress_counter / total_scans * 100) if total_scans > 0 else 0
                 padding = " " * 10 
-                sys.stdout.write(f"\r{YELLOW_BOLD}[*] Progress: {progress_counter}/{total_scans} scans completed.{RESET}{padding}")
+                sys.stdout.write(f"\r{YELLOW_BOLD}[*] Progress: {progress_counter}/{total_scans} ({pct:.1f}%) scans completed.{RESET}{padding}")
                 sys.stdout.flush()
 
 # --- MODIFIED: Progress bar uses \r ---
-def scan_vhost(ip_address, url_to_test, total_scans):
+def scan_vhost(ip_address, url_to_test, total_scans, session=None, timeout=DEFAULT_TIMEOUT, use_https=False, exclude_codes=None):
     """
-    Scans a single IP for a virtual host. Reports any status except 404.
+    Scans a single IP for a virtual host. Reports any status not in exclude_codes.
     """
+    if exclude_codes is None:
+        exclude_codes = {404}
     global progress_counter
+    scheme = "https" if use_https else "http"
+    req = session if session is not None else requests
     try:
         custom_headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
             'Host': url_to_test
         }
         
-        response = requests.get(f"http://{ip_address}", timeout=5, headers=custom_headers, allow_redirects=False)
+        response = req.get(f"{scheme}://{ip_address}", timeout=timeout, headers=custom_headers, allow_redirects=False)
         
-        if response.status_code != 404:
+        if response.status_code not in exclude_codes:
             with print_lock:
                 # Print result on a new line, clearing progress bar
                 sys.stdout.write(f"\r{GREEN_BOLD}[+] Found (VHost): {url_to_test} {YELLOW_BOLD}(Status: {response.status_code}){RESET}\n")
@@ -203,23 +215,26 @@ def scan_vhost(ip_address, url_to_test, total_scans):
         with print_lock:
             progress_counter += 1
             if progress_counter % 100 == 0 or progress_counter == total_scans:
-                # Use \r to overwrite the current line and flush
+                pct = (progress_counter / total_scans * 100) if total_scans > 0 else 0
                 padding = " " * 10 
-                sys.stdout.write(f"\r{YELLOW_BOLD}[*] Progress: {progress_counter}/{total_scans} scans completed.{RESET}{padding}")
+                sys.stdout.write(f"\r{YELLOW_BOLD}[*] Progress: {progress_counter}/{total_scans} ({pct:.1f}%) scans completed.{RESET}{padding}")
                 sys.stdout.flush()
 
 # --- MODIFIED: Progress bar uses \r ---
-def scan_page(base_url, page_word, total_scans):
+def scan_page(base_url, page_word, total_scans, session=None, timeout=DEFAULT_TIMEOUT, exclude_codes=None):
     """
-    Scans for a page or directory on a base URL. Reports any status except 404.
+    Scans for a page or directory on a base URL. Reports any status not in exclude_codes.
     """
+    if exclude_codes is None:
+        exclude_codes = {404}
     global progress_counter
+    req = session if session is not None else requests
     target_url = f"{base_url}/{page_word}"
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'}
-        response = requests.get(target_url, timeout=5, headers=headers, allow_redirects=False)
+        response = req.get(target_url, timeout=timeout, headers=headers, allow_redirects=False)
 
-        if response.status_code != 404:
+        if response.status_code not in exclude_codes:
             with print_lock:
                 # Print result on a new line, clearing progress bar
                 sys.stdout.write(f"\r{GREEN_BOLD}[+] Found Page: {target_url} {YELLOW_BOLD}(Status: {response.status_code}){RESET}\n")
@@ -234,10 +249,27 @@ def scan_page(base_url, page_word, total_scans):
         with print_lock:
             progress_counter += 1
             if progress_counter % 100 == 0 or progress_counter == total_scans:
-                # Use \r to overwrite the current line and flush
+                pct = (progress_counter / total_scans * 100) if total_scans > 0 else 0
                 padding = " " * 10 
-                sys.stdout.write(f"\r{YELLOW_BOLD}[*] Progress: {progress_counter}/{total_scans} scans completed.{RESET}{padding}")
+                sys.stdout.write(f"\r{YELLOW_BOLD}[*] Progress: {progress_counter}/{total_scans} ({pct:.1f}%) scans completed.{RESET}{padding}")
                 sys.stdout.flush()
+
+def check_wildcard(domain, timeout=DEFAULT_TIMEOUT, use_https=False):
+    """
+    Checks if the domain has wildcard DNS configured.
+    Returns (True, status_code) if a random subdomain gets a non-404 response, else (False, None).
+    """
+    random_sub = ''.join(random.choices(string.ascii_lowercase, k=16))
+    scheme = "https" if use_https else "http"
+    test_url = f"{scheme}://{random_sub}.{domain}"
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'}
+        response = requests.get(test_url, timeout=timeout, headers=headers, allow_redirects=False)
+        if response.status_code != 404:
+            return True, response.status_code
+    except Exception:
+        pass
+    return False, None
 
 def clean_and_validate_target(raw_target):
     """
@@ -252,7 +284,13 @@ def clean_and_validate_target(raw_target):
     target = raw_target.strip()
 
     if IP_REGEX.match(target):
-        return 'ip', target, None
+        try:
+            octets = target.split('.')
+            if all(0 <= int(o) <= 255 for o in octets):
+                return 'ip', target, None
+        except ValueError:
+            pass
+        return None, None, "Invalid IP address. Each octet must be between 0 and 255."
 
     if not target.startswith(('http://', 'https://')):
         target = 'http://' + target
@@ -265,7 +303,13 @@ def clean_and_validate_target(raw_target):
              return None, None, "Invalid format. Could not extract domain."
         
         if IP_REGEX.match(domain):
-            return 'ip', domain, None
+            try:
+                octets = domain.split('.')
+                if all(0 <= int(o) <= 255 for o in octets):
+                    return 'ip', domain, None
+            except ValueError:
+                pass
+            return None, None, "Invalid IP address. Each octet must be between 0 and 255."
         
         if '.' not in domain:
             return None, None, "Invalid domain format. Must contain a '.'"
@@ -276,10 +320,16 @@ def clean_and_validate_target(raw_target):
         return None, None, f"An error occurred during parsing: {e}"
 
 # --- MODIFIED: Added a newline after loop ---
-def run_scan(scan_mode, target_ip, base_domain, wordlist_path, total_scans):
+def run_scan(scan_mode, target_ip, base_domain, wordlist_path, total_scans,
+             timeout=DEFAULT_TIMEOUT, use_https=False, exclude_codes=None,
+             output_file=None, num_threads=None, skip_wildcard=False):
     """
     Manages the thread pool and collects results.
     """
+    if exclude_codes is None:
+        exclude_codes = {404}
+    if num_threads is None:
+        num_threads = MAX_THREADS
     global progress_counter
     progress_counter = 0 
     found_items = []
@@ -289,15 +339,30 @@ def run_scan(scan_mode, target_ip, base_domain, wordlist_path, total_scans):
         sys.stdout.write(CYAN_BOLD + f"\n[*] Starting VHost scan on: {target_ip} (for {base_domain})\n" + RESET)
         scan_function = scan_vhost
     elif scan_mode == 'page':
-        base_url = f"http://{base_domain}" 
+        scheme = "https" if use_https else "http"
+        base_url = f"{scheme}://{base_domain}" 
         sys.stdout.write(CYAN_BOLD + f"\n[*] Starting Page scan on: {base_url}\n" + RESET)
         scan_function = scan_page
     else: # default to 'dns'
         sys.stdout.write(CYAN_BOLD + f"\n[*] Starting DNS scan on: {base_domain}\n" + RESET)
         scan_function = scan_dns
         
-    sys.stdout.write(CYAN_BOLD + f"[*] Using wordlist: {wordlist_path} ({total_scans} words) with {MAX_THREADS} threads\n" + RESET)
+    sys.stdout.write(CYAN_BOLD + f"[*] Using wordlist: {wordlist_path} ({total_scans} words) with {num_threads} threads\n" + RESET)
+    excluded_str = ", ".join(str(c) for c in sorted(exclude_codes))
+    sys.stdout.write(CYAN_BOLD + f"[*] Excluding status codes: {excluded_str} | Timeout: {timeout}s | {'HTTPS' if use_https else 'HTTP'}\n" + RESET)
     sys.stdout.write(CYAN_BOLD + ("-" * 30) + "\n" + RESET)
+
+    # Wildcard detection for subdomain/vhost scans
+    if scan_mode in ('dns', 'vhost') and not skip_wildcard:
+        sys.stdout.write(CYAN_BOLD + "[*] Checking for wildcard DNS...\n" + RESET)
+        is_wildcard, wc_code = check_wildcard(base_domain, timeout=timeout, use_https=use_https)
+        if is_wildcard:
+            sys.stdout.write(
+                YELLOW_BOLD + f"[!] WARNING: Wildcard DNS detected (random subdomain returned {wc_code}).\n"
+                              f"[!] Results may contain false positives. Use --no-wildcard to skip this check.\n" + RESET
+            )
+        else:
+            sys.stdout.write(GREEN_BOLD + "[*] No wildcard DNS detected. Proceeding with scan.\n" + RESET)
 
     try:
         with open(wordlist_path, 'r') as file:
@@ -306,23 +371,25 @@ def run_scan(scan_mode, target_ip, base_domain, wordlist_path, total_scans):
         sys.stdout.write(RED_BOLD + f"[-] Error reading wordlist during scan: {e}\n" + RESET)
         return
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
-        if scan_mode == 'vhost':
-            futures = {executor.submit(scan_function, target_ip, f"{sub}.{base_domain}", total_scans): sub for sub in wordlist}
-        elif scan_mode == 'page':
-            futures = {executor.submit(scan_function, base_url, sub, total_scans): sub for sub in wordlist}
-        else: # dns
-            futures = {executor.submit(scan_function, f"{sub}.{base_domain}", total_scans): sub for sub in wordlist}
-        
-        try:
-             for future in concurrent.futures.as_completed(futures):
-                result = future.result()
-                if result:
-                    found_items.append(result)
-                    
-        except KeyboardInterrupt:
-            sys.stdout.write(f"\n{RED_BOLD}[!] Scan interrupted by user. Stopping threads...{RESET}\n")
-            executor.shutdown(wait=False, cancel_futures=True) 
+    with requests.Session() as session:
+        session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'})
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+            if scan_mode == 'vhost':
+                futures = {executor.submit(scan_function, target_ip, f"{sub}.{base_domain}", total_scans, session, timeout, use_https, exclude_codes): sub for sub in wordlist}
+            elif scan_mode == 'page':
+                futures = {executor.submit(scan_function, base_url, sub, total_scans, session, timeout, exclude_codes): sub for sub in wordlist}
+            else: # dns
+                futures = {executor.submit(scan_function, f"{sub}.{base_domain}", total_scans, session, timeout, use_https, exclude_codes): sub for sub in wordlist}
+            
+            try:
+                 for future in concurrent.futures.as_completed(futures):
+                    result = future.result()
+                    if result:
+                        found_items.append(result)
+                        
+            except KeyboardInterrupt:
+                sys.stdout.write(f"\n{RED_BOLD}[!] Scan interrupted by user. Stopping threads...{RESET}\n")
+                executor.shutdown(wait=False, cancel_futures=True) 
     
     # --- ADDED THIS LINE ---
     # This moves the cursor to a new line after the progress bar is done
@@ -334,19 +401,62 @@ def run_scan(scan_mode, target_ip, base_domain, wordlist_path, total_scans):
     sys.stdout.write(f"{CYAN_BOLD}[*] Scan complete in {end_time - start_time:.2f} seconds.{RESET}\n")
     if found_items:
         if scan_mode == 'page':
-            sys.stdout.write(CYAN_BOLD + f"\n[+] Found {len(found_items)} responsive pages/directories (non-404):\n" + RESET)
+            sys.stdout.write(CYAN_BOLD + f"\n[+] Found {len(found_items)} responsive pages/directories (non-excluded):\n" + RESET)
         else:
-            sys.stdout.write(CYAN_BOLD + f"\n[+] Found {len(found_items)} responsive subdomains (non-404):\n" + RESET)
+            sys.stdout.write(CYAN_BOLD + f"\n[+] Found {len(found_items)} responsive subdomains (non-excluded):\n" + RESET)
         for item in found_items:
             sys.stdout.write(CYAN_BOLD + f"  - {item}\n" + RESET)
     else:
         if scan_mode == 'page':
-            sys.stdout.write(CYAN_BOLD + "[-] No responsive (non-404) pages or directories found.\n" + RESET)
+            sys.stdout.write(CYAN_BOLD + "[-] No responsive (non-excluded) pages or directories found.\n" + RESET)
         else:
-            sys.stdout.write(CYAN_BOLD + "[-] No responsive (non-404) subdomains found.\n" + RESET)
+            sys.stdout.write(CYAN_BOLD + "[-] No responsive (non-excluded) subdomains found.\n" + RESET)
+
+    # Save results to output file if requested
+    if output_file and found_items:
+        try:
+            with open(output_file, 'w') as f:
+                f.write(f"# DomainScanner results for {base_domain} ({scan_mode} mode)\n")
+                f.write(f"# Scan completed in {end_time - start_time:.2f} seconds\n")
+                for item in found_items:
+                    f.write(item + "\n")
+            sys.stdout.write(GREEN_BOLD + f"[+] Results saved to: {output_file}\n" + RESET)
+        except Exception as e:
+            sys.stdout.write(RED_BOLD + f"[-] Error saving output file: {e}\n" + RESET)
     return
 
-def main_tool_loop():
+def parse_args():
+    """Parse command-line arguments for non-interactive usage."""
+    parser = argparse.ArgumentParser(
+        description="Domain Scanner - Scan for subdomains, VHosts, and pages.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  Interactive mode:    python DomainScanner\n"
+            "  DNS subdomain scan:  python DomainScanner -d example.com -m dns -w wordlists/small.txt\n"
+            "  Page scan w/ output: python DomainScanner -d example.com -m page -o results.txt\n"
+            "  HTTPS vhost scan:    python DomainScanner -d example.com -m vhost --https\n"
+        )
+    )
+    parser.add_argument('-d', '--domain', help='Target domain or IP address')
+    parser.add_argument('-m', '--mode', choices=['dns', 'vhost', 'page'], default='dns',
+                        help='Scan mode: dns (subdomain), vhost, or page (default: dns)')
+    parser.add_argument('-w', '--wordlist', help='Path to wordlist file (uses default if omitted)')
+    parser.add_argument('-o', '--output', help='Save found results to this file')
+    parser.add_argument('--threads', type=int, default=MAX_THREADS,
+                        help=f'Number of concurrent threads (default: {MAX_THREADS})')
+    parser.add_argument('--timeout', type=float, default=DEFAULT_TIMEOUT,
+                        help=f'HTTP request timeout in seconds (default: {DEFAULT_TIMEOUT})')
+    parser.add_argument('--https', action='store_true', help='Use HTTPS instead of HTTP')
+    parser.add_argument('--exclude-codes', default='404',
+                        help='Comma-separated HTTP status codes to exclude from results (default: 404)')
+    parser.add_argument('--no-wildcard', action='store_true',
+                        help='Skip wildcard DNS detection before subdomain/vhost scanning')
+    return parser.parse_args()
+
+
+def main_tool_loop(timeout=DEFAULT_TIMEOUT, use_https=False, exclude_codes=None,
+                   output_file=None, num_threads=None, skip_wildcard=False):
     print_red_banner("DOMAIN SCANNER", center=True, padding=0)
     enable_windows_ansi()
     info_text = "\nThis tool scans for subdomains, VHosts, and pages.\n"
@@ -457,7 +567,10 @@ def main_tool_loop():
                     sys.stdout.write(RED_BOLD + f"[-] Error reading wordlist: {e}\n" + RESET)
                     continue
                 
-                run_scan(scan_mode, ip_to_scan, domain_to_scan, wordlist_path, total_scans) 
+                run_scan(scan_mode, ip_to_scan, domain_to_scan, wordlist_path, total_scans,
+                         timeout=timeout, use_https=use_https, exclude_codes=exclude_codes,
+                         output_file=output_file, num_threads=num_threads,
+                         skip_wildcard=skip_wildcard)
                      
         except EOFError:
              break
@@ -465,11 +578,98 @@ def main_tool_loop():
              break
 
 if __name__ == "__main__":
+    args = parse_args()
+
+    # Parse exclude codes
     try:
-        main_tool_loop()
-        sys.stdout.write(f"\n{CYAN_BOLD}Exiting scanner. Goodbye!{RESET}\n")
-    except KeyboardInterrupt:
-        sys.stdout.write(f"\n{RED_BOLD}[!] Exiting scanner. Goodbye!{RESET}\n")
-        sys.exit(0)
-    except Exception as e:
-        sys.stdout.write(f"\n{RED_BOLD}[!] An unexpected error occurred: {e}{RESET}\n")
+        exclude_codes = {int(c.strip()) for c in args.exclude_codes.split(',') if c.strip()}
+    except ValueError:
+        sys.stdout.write(f"{RED_BOLD}[!] Invalid --exclude-codes value. Using default: 404{RESET}\n")
+        exclude_codes = {404}
+
+    # Non-interactive mode: domain provided via CLI
+    if args.domain:
+        print_red_banner("DOMAIN SCANNER", center=True, padding=0)
+        enable_windows_ansi()
+        sys.stdout.write(CYAN_BOLD + CREATOR_INFO + RESET + "\n")
+
+        input_type, value, error_msg = clean_and_validate_target(args.domain)
+        if error_msg:
+            sys.stdout.write(f"{RED_BOLD}[-] Error: {error_msg}{RESET}\n")
+            sys.exit(1)
+
+        scan_mode = args.mode
+        domain_to_scan = value
+        target_ip = None
+
+        if input_type == 'ip':
+            try:
+                hostname, _, _ = socket.gethostbyaddr(value)
+                sys.stdout.write(f"{GREEN_BOLD}[*] IP {value} resolves to hostname: {hostname}{RESET}\n")
+            except (socket.herror, socket.gaierror):
+                sys.stdout.write(f"{CYAN_BOLD}[*] IP {value} does not resolve to a hostname.{RESET}\n")
+            if scan_mode != 'page':
+                sys.stdout.write(f"{YELLOW_BOLD}[!] IP provided; forcing page scan mode.{RESET}\n")
+                scan_mode = 'page'
+        elif input_type == 'domain' and scan_mode == 'vhost':
+            try:
+                target_ip = socket.gethostbyname(value)
+                sys.stdout.write(f"{GREEN_BOLD}[*] Domain {value} resolves to IP: {target_ip}{RESET}\n")
+            except socket.gaierror:
+                sys.stdout.write(f"{RED_BOLD}[-] Error: Could not resolve {value}. VHost scan requires IP.{RESET}\n")
+                sys.exit(1)
+
+        default_list_name = DEFAULT_PAGE_WORDLIST if scan_mode == 'page' else DEFAULT_SUBDOMAIN_WORDLIST
+        wordlist_input = args.wordlist or default_list_name
+
+        wordlist_path = None
+        if os.path.isfile(wordlist_input):
+            wordlist_path = wordlist_input
+        else:
+            potential_path = os.path.join(DEFAULT_WORDLIST_DIR, wordlist_input)
+            if os.path.isfile(potential_path):
+                wordlist_path = potential_path
+
+        if not wordlist_path:
+            sys.stdout.write(RED_BOLD + f"[-] Error: Wordlist not found at '{wordlist_input}'\n" + RESET)
+            sys.exit(1)
+
+        try:
+            with open(wordlist_path, 'r') as f:
+                total_scans = sum(1 for line in f if line.strip())
+            if total_scans == 0:
+                sys.stdout.write(RED_BOLD + f"[-] Error: Wordlist '{wordlist_path}' is empty.\n" + RESET)
+                sys.exit(1)
+        except Exception as e:
+            sys.stdout.write(RED_BOLD + f"[-] Error reading wordlist: {e}\n" + RESET)
+            sys.exit(1)
+
+        try:
+            run_scan(scan_mode, target_ip, domain_to_scan, wordlist_path, total_scans,
+                     timeout=args.timeout, use_https=args.https, exclude_codes=exclude_codes,
+                     output_file=args.output, num_threads=args.threads,
+                     skip_wildcard=args.no_wildcard)
+            sys.stdout.write(f"\n{CYAN_BOLD}Exiting scanner. Goodbye!{RESET}\n")
+        except KeyboardInterrupt:
+            sys.stdout.write(f"\n{RED_BOLD}[!] Exiting scanner. Goodbye!{RESET}\n")
+            sys.exit(0)
+        except Exception as e:
+            sys.stdout.write(f"\n{RED_BOLD}[!] An unexpected error occurred: {e}{RESET}\n")
+
+    # Interactive mode: no domain argument provided
+    else:
+        try:
+            main_tool_loop(
+                timeout=args.timeout,
+                use_https=args.https,
+                exclude_codes=exclude_codes,
+                output_file=args.output,
+                num_threads=args.threads,
+                skip_wildcard=args.no_wildcard,
+            )
+            sys.stdout.write(f"\n{CYAN_BOLD}Exiting scanner. Goodbye!{RESET}\n")
+        except KeyboardInterrupt:
+            sys.stdout.write(f"\n{RED_BOLD}[!] Exiting scanner. Goodbye!{RESET}\n")
+            sys.exit(0)
+        except Exception as e:
+            sys.stdout.write(f"\n{RED_BOLD}[!] An unexpected error occurred: {e}{RESET}\n")

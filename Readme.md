@@ -53,9 +53,15 @@ This tool is the direct application of my Python programming skills to solve a r
  
 ## ✨ Key Features
  
-* **Dual-Mode Scanning:** Can be switched to scan for **subdomains** or **directories** with a simple flag.
-* **Wordlist Flexibility:** Natively supports the use of any custom wordlist. Several common lists are already included in the `/wordlists` directory.
-* **Simple & Clean Output:** Provides clear, actionable output, showing exactly what was found (Status 200) and what was not (Status 404).
+* **Three Scan Modes:** DNS subdomain enumeration, Virtual Host (VHost) discovery, and page/directory brute-forcing.
+* **CLI & Interactive Modes:** Provide a `-d` flag for fully scripted, non-interactive scans or run without flags for the guided interactive mode.
+* **HTTPS Support:** Use `--https` to scan targets over HTTPS instead of HTTP.
+* **Save Results to File:** Use `-o results.txt` to automatically save all found items to a file.
+* **Status Code Filtering:** Use `--exclude-codes` to control which HTTP status codes are treated as "not found" (default: 404).
+* **Wildcard DNS Detection:** Automatically detects wildcard DNS before subdomain/VHost scans to warn about potential false positives.
+* **Configurable Threads & Timeout:** Tune performance with `--threads` and `--timeout`.
+* **Wordlist Flexibility:** Natively supports custom wordlists. Several common lists are included in the `/wordlists` directory.
+* **Connection Pooling:** Uses `requests.Session` for efficient HTTP connection reuse across all threads.
 * **Lightweight & Portable:** Written in pure Python with minimal dependencies, making it fast and easy to run anywhere.
  
 ---
@@ -123,70 +129,82 @@ All commands are run from within the `domainscanner` directory.
 ### Help Menu
 To see all available commands and options, use the `-h` or `--help` flag.
 ```bash
-python domainscanner.py --help
-Example 1: Subdomain Scanning
-This command scans example.com for subdomains using the included small.txt wordlist.
+python DomainScanner --help
+```
 
-Bash
+### Interactive Mode
+Run without any arguments to enter the guided interactive mode:
+```bash
+python DomainScanner
+```
 
-python domainscanner.py --mode subdomain --domain example.com --wordlist wordlists/small.txt
-Sample Output:
+### Example 1: DNS Subdomain Scanning (CLI)
+```bash
+python DomainScanner -d example.com -m dns -w wordlists/small.txt
+```
 
-=========================================
-      DomainScanner | Subdomain Mode
-=========================================
-[+] Target Domain: example.com
-[+] Wordlist: wordlists/small.txt
-...
-[+] FOUND (200): [www.example.com](https://www.example.com)
-[+] FOUND (200): blog.example.com
-[-] NOT FOUND (404): dev.example.com
-[-] NOT FOUND (404): test.example.com
-...
-[+] Scan Complete.
-Example 2: Directory & Page Scanning
-This command scans http://example.com for hidden directories and pages using the common_pages.txt wordlist.
+### Example 2: Directory & Page Scanning with Output File
+```bash
+python DomainScanner -d example.com -m page -o results.txt
+```
 
-Bash
+### Example 3: HTTPS VHost Scan with Custom Threads & Timeout
+```bash
+python DomainScanner -d example.com -m vhost --https --threads 50 --timeout 10
+```
 
-python domainscanner.py --mode directory --domain [http://example.com](http://example.com) --wordlist wordlists/common_pages.txt
-Sample Output:
+### Example 4: Subdomain Scan Excluding Multiple Status Codes
+```bash
+# Exclude both 404 and 403 responses
+python DomainScanner -d example.com -m dns --exclude-codes 404,403
+```
 
-=========================================
-     DomainScanner | Directory Mode
-=========================================
-[+] Target URL: [http://example.com](http://example.com)
-[+] Wordlist: wordlists/common_pages.txt
-...
-[+] FOUND (200): [http://example.com/admin](http://example.com/admin)
-[+] FOUND (200): [http://example.com/login.html](http://example.com/login.html)
-[+] FORBIDDEN (403): [http://example.com/.git](http://example.com/.git)
-[-] NOT FOUND (404): [http://example.com/config.php](http://example.com/config.php)
-...
-[+] Scan Complete.
-🗺️ Project Roadmap
-This tool is a solid foundation, but I plan to add more advanced features to improve its performance and capabilities. This demonstrates my commitment to continuous learning and improving my code.
+### Example 5: Skip Wildcard DNS Detection
+```bash
+python DomainScanner -d example.com -m dns --no-wildcard
+```
 
-[ ] Multi-threading: Implement threading (concurrent.futures) to send multiple requests at once, drastically increasing scan speed.
+### All CLI Options
 
-[ ] Colorized Output: Add colorama or termcolor to make results more readable (e.g., Green for 200, Yellow for 403, Red for 404).
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-d`, `--domain` | Target domain or IP | — |
+| `-m`, `--mode` | `dns`, `vhost`, or `page` | `dns` |
+| `-w`, `--wordlist` | Path to wordlist file | Built-in default |
+| `-o`, `--output` | Save results to file | — |
+| `--threads` | Number of concurrent threads | 100 |
+| `--timeout` | HTTP request timeout (seconds) | 5 |
+| `--https` | Use HTTPS instead of HTTP | HTTP |
+| `--exclude-codes` | Comma-separated status codes to exclude | 404 |
+| `--no-wildcard` | Skip wildcard DNS detection | Enabled |
 
-[ ] Save to File: Add a -o or --output flag to save all "Found" results to a .txt report.
+---
 
-[ ] Status Code Filtering: Add flags like --hide-404 or --show-403 to let the user filter the noise.
+## 🗺️ Project Roadmap
+This tool continues to evolve. Here are features added and planned:
 
-[ ] Recursive Scanning: Add an option to scan for directories within found directories.
+- [x] **Multi-threading:** Uses `concurrent.futures.ThreadPoolExecutor` for fast parallel scanning.
+- [x] **Colorized Output:** Terminal colors for clear, actionable output.
+- [x] **Save to File:** `-o`/`--output` flag saves all found results to a report file.
+- [x] **Status Code Filtering:** `--exclude-codes` lets you filter any status codes from results.
+- [x] **CLI Argument Support:** Full `argparse`-based CLI for non-interactive/scripted usage.
+- [x] **HTTPS Support:** `--https` flag for scanning HTTPS targets.
+- [x] **Wildcard DNS Detection:** Automatically warns when wildcard DNS is detected.
+- [x] **Connection Pooling:** Uses `requests.Session` for efficient connection reuse.
+- [x] **Configurable Threads & Timeout:** `--threads` and `--timeout` flags.
+- [x] **IP Octet Validation:** Properly validates IP addresses (0–255 per octet).
+- [ ] **Recursive Scanning:** Scan for directories within found directories.
+- [ ] **Resume Scan:** Save and resume interrupted scans.
 
-[Details] Improved Error Handling: Add more robust handling for connection timeouts, SSL certificate errors, and invalid domains.
+---
 
-⚖️ License
+## ⚖️ License
 This project is distributed under the MIT License. See the LICENSE file for more information.
 
-👤 Author
-Surya Pratap Singh
+## 👤 Author
+**Surya Pratap Singh**
 
-GitHub: Suryao07
-
-LinkedIn: www.linkedin.com/in/surya-pratap-singh-61a41130a
+* GitHub: [Suryao07](https://github.com/Suryao07)
+* LinkedIn: [surya-pratap-singh](https://www.linkedin.com/in/surya-pratap-singh-61a41130a)
 
 Feel free to reach out with any questions or suggestions!
