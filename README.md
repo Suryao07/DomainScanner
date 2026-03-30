@@ -334,7 +334,7 @@ domainscanner/
 ## 👨‍💻 Author
 
 **Surya Pratap Singh**  
-[GitHub](https://github.com/Suryao07/) | [LinkedIn](https://linkedin.com/in/suryasingh)
+[GitHub](https://github.com/Suryao07/) | [LinkedIn](www.linkedin.com/in/surya0x)
 
 Built for learning. Used for security. Shared freely.
 
