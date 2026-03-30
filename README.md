@@ -127,6 +127,8 @@ Wordlist: [press Enter for pro-combined.txt]
   - api.example.com
 ```
 
+![DNS Scan](assets/dns-scan.png)
+
 ---
 
 ### Example 2: Directory Discovery
@@ -158,6 +160,8 @@ Wordlist: [press Enter for common_pages.txt]
   - http://example.com/.git
   - http://example.com/config.php
 ```
+
+![Page Scan](assets/page-scan.png)
 
 ---
 
